@@ -14,6 +14,11 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      CHAMAJA_FIREBASE_PROJECT_ID: ${{ vars.CHAMAJA_FIREBASE_PROJECT_ID }}
+      CHAMAJA_FIREBASE_APP_ID: ${{ vars.CHAMAJA_FIREBASE_APP_ID }}
+      CHAMAJA_FIREBASE_API_KEY: ${{ vars.CHAMAJA_FIREBASE_API_KEY }}
+      CHAMAJA_FIREBASE_SENDER_ID: ${{ vars.CHAMAJA_FIREBASE_SENDER_ID }}
 
     steps:
       - name: Checkout
