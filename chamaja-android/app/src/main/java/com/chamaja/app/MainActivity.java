@@ -4,12 +4,16 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DownloadManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
+import android.net.http.SslError;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.View;
@@ -24,15 +28,21 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.net.http.SslError;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.FirebaseMessaging;
+
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://chamaja-cg7efm.v2.appdeploy.ai/";
     private static final int LOCATION_REQUEST = 3001;
     private static final int FILE_CHOOSER_REQUEST = 3002;
+    private static final int NOTIFICATION_REQUEST = 3003;
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -44,6 +54,9 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         WebView.setWebContentsDebuggingEnabled(false);
+        createNotificationChannel();
+        requestNotificationPermissionIfNeeded();
+        configureFirebaseMessaging();
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.rgb(246, 248, 251));
@@ -73,6 +86,71 @@ public class MainActivity extends Activity {
         }
     }
 
+    private boolean hasFirebaseConfig() {
+        return BuildConfig.FIREBASE_PROJECT_ID != null && !BuildConfig.FIREBASE_PROJECT_ID.trim().isEmpty()
+            && BuildConfig.FIREBASE_APP_ID != null && !BuildConfig.FIREBASE_APP_ID.trim().isEmpty()
+            && BuildConfig.FIREBASE_API_KEY != null && !BuildConfig.FIREBASE_API_KEY.trim().isEmpty()
+            && BuildConfig.FIREBASE_SENDER_ID != null && !BuildConfig.FIREBASE_SENDER_ID.trim().isEmpty();
+    }
+
+    private void configureFirebaseMessaging() {
+        if (!hasFirebaseConfig()) return;
+        try {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                FirebaseOptions options = new FirebaseOptions.Builder()
+                    .setProjectId(BuildConfig.FIREBASE_PROJECT_ID)
+                    .setApplicationId(BuildConfig.FIREBASE_APP_ID)
+                    .setApiKey(BuildConfig.FIREBASE_API_KEY)
+                    .setGcmSenderId(BuildConfig.FIREBASE_SENDER_ID)
+                    .build();
+                FirebaseApp.initializeApp(this, options);
+            }
+
+            FirebaseMessaging.getInstance().setAutoInitEnabled(true);
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                if (!task.isSuccessful() || task.getResult() == null) return;
+                String token = task.getResult();
+                getSharedPreferences(ChamaJaFirebaseMessagingService.PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putString(ChamaJaFirebaseMessagingService.PREF_FCM_TOKEN, token)
+                    .apply();
+                runOnUiThread(this::injectPendingFcmToken);
+            });
+        } catch (Exception ignored) {
+            // Push fica desativado até a configuração pública do Firebase ser fornecida no build.
+        }
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationChannel channel = new NotificationChannel(
+            ChamaJaFirebaseMessagingService.CHANNEL_ID,
+            "Atualizações do ChamaJá",
+            NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription("Pedidos, mensagens, pagamentos e andamento dos serviços.");
+        manager.createNotificationChannel(channel);
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_REQUEST);
+        }
+    }
+
+    private void injectPendingFcmToken() {
+        if (webView == null) return;
+        String token = getSharedPreferences(ChamaJaFirebaseMessagingService.PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(ChamaJaFirebaseMessagingService.PREF_FCM_TOKEN, null);
+        if (token == null || token.isEmpty()) return;
+        String quoted = JSONObject.quote(token);
+        String script = "window.__CHAMAJA_FCM_TOKEN__=" + quoted
+            + ";window.dispatchEvent(new CustomEvent('chamaja:fcm-token',{detail:{token:" + quoted + "}}));";
+        webView.evaluateJavascript(script, null);
+    }
+
     private void configureWebView() {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -86,7 +164,7 @@ public class MainActivity extends Activity {
         settings.setDisplayZoomControls(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setUserAgentString(settings.getUserAgentString() + " ChamaJaAndroid/1.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " ChamaJaAndroid/1.1");
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
@@ -107,6 +185,7 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 progressBar.setVisibility(View.GONE);
+                injectPendingFcmToken();
             }
 
             @Override
@@ -260,8 +339,6 @@ public class MainActivity extends Activity {
     @SuppressLint("GestureBackNavigation")
     @Override
     public void onBackPressed() {
-        // Esta Activity desativa explicitamente predictive-back no Manifest.
-        // O lint do API 36 não considera esse opt-out por Activity, por isso a supressão é localizada.
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
         } else {
