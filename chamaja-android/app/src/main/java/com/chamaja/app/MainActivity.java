@@ -1,6 +1,7 @@
 package com.chamaja.app;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
@@ -11,7 +12,6 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.Settings;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
@@ -257,8 +257,11 @@ public class MainActivity extends Activity {
         super.onSaveInstanceState(outState);
     }
 
+    @SuppressLint("GestureBackNavigation")
     @Override
     public void onBackPressed() {
+        // Esta Activity desativa explicitamente predictive-back no Manifest.
+        // O lint do API 36 não considera esse opt-out por Activity, por isso a supressão é localizada.
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
         } else {
