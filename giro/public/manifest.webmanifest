@@ -1,0 +1,19 @@
+{
+  "name": "Giro — Agenda, caixa e clientes",
+  "short_name": "Giro",
+  "description": "Agenda, caixa e clientes para o pequeno negócio.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3efe6",
+  "theme_color": "#1d5c4e",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

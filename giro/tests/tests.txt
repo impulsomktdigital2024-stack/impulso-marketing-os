@@ -1,0 +1,65 @@
+# Tests
+
+## Test 1 - Concluir atendimento continua lançando uma única entrada [sanity]
+Viewport: desktop
+Covers: Estúdio Luna, agenda, conclusão de horário, lançamento automático no caixa, proteção contra duplicidade após a evolução do cadastro
+Description: Garante que o fluxo principal anterior continua funcionando depois da personalização por segmento.
+
+Steps:
+1. Se a primeira tela aparecer, escolha "Conhecer o Estúdio Luna"
+2. Em Hoje, conclua o horário de Carlos das 09:00
+3. Abra Caixa e localize "Corte masculino — Carlos Mendes"
+4. Atualize a página e abra Caixa novamente
+
+Expected: Existe exatamente uma entrada nova para o atendimento de Carlos e ela não é duplicada após atualizar.
+
+## Test 2 - Cadastrar uma barbearia local com serviços sugeridos
+Viewport: desktop
+Covers: cadastro inicial local, tipo de negócio, responsável, WhatsApp, cidade/UF, número de profissionais, presets de serviço, persistência local
+Description: Verifica que o segmento escolhido realmente personaliza o primeiro uso do Giro.
+
+Steps:
+1. Em um navegador sem dados do Giro, clique em "Usar só neste aparelho"
+2. Cadastre "Barbearia Central", escolha "Barbearia", informe responsável, WhatsApp, cidade, UF e 2 profissionais
+3. Conclua o cadastro e abra Agenda
+4. Atualize a página
+
+Expected: O negócio continua como "Barbearia Central" e a tabela de serviços contém "Corte masculino", "Barba" e "Cabelo + barba".
+
+## Test 3 - Exigir descrição quando o segmento for Outro
+Viewport: mobile
+Covers: validação do cadastro por tipo, opção Outro, guardrail de dados incompletos, formulário responsivo
+Description: Impede que negócios classificados como Outro sejam gravados sem identificação do segmento.
+
+Steps:
+1. Em um navegador sem dados, toque em "Usar só neste aparelho"
+2. Preencha o cadastro, escolha "Outro" e deixe "Qual é o seu tipo de negócio?" vazio
+3. Tente criar o Giro
+
+Expected: A mensagem "Descreva o tipo do negócio ao escolher “Outro”." aparece e o cadastro não é concluído.
+
+## Test 4 - Novo usuário da nuvem informa o tipo antes de criar o primeiro negócio
+Viewport: desktop
+Covers: autenticação, GET /api/businesses, POST /api/businesses, primeiro cadastro em nuvem, perfil do negócio, sincronização e persistência
+Description: Verifica que uma conta nova não recebe mais um negócio genérico sem preencher o cadastro.
+
+Steps:
+1. Em uma conta autenticada sem empresas, entre no Giro
+2. Confirme que o formulário "Configure seu Giro" aparece antes do painel
+3. Cadastre "Oficina Teste" como "Oficina automotiva" com os demais dados obrigatórios
+4. Abra Agenda e depois atualize a página
+
+Expected: "Oficina Teste" permanece na nuvem e seus serviços iniciais incluem "Diagnóstico", "Troca de óleo" e "Revisão".
+
+## Test 5 - CEO acompanha segmentos e tipo de cada empresa
+Viewport: desktop
+Covers: GET /api/admin/overview, GET /api/admin/businesses, índice global de negócios, métricas por segmento, pesquisa por segmento, proteção administrativa existente
+Description: Verifica que o cadastro de tipo alimenta a visão estratégica exclusiva do CEO.
+
+Steps:
+1. Entre como o CEO autorizado e abra "Painel CEO"
+2. Na Visão geral, localize o quadro "Segmentos"
+3. Abra "Empresas" e procure por "Oficina"
+4. Confirme os dados de segmento, cidade/UF e quantidade de profissionais da empresa cadastrada
+
+Expected: O quadro de segmentos apresenta contagens por tipo e a tabela de empresas mostra "Oficina automotiva" com os dados cadastrais sem expor credenciais do Asaas.

@@ -1,0 +1,18 @@
+{
+  "methods": [
+    "google",
+    "apple",
+    "x"
+  ],
+  "headline": "Entre no Giro",
+  "subtitle": "Sincronize agenda, caixa, clientes e equipe entre seus aparelhos.",
+  "style": {
+    "mode": "light",
+    "accentColor": "#1d5c4e",
+    "backgroundColor": "#f3efe6",
+    "panelColor": "#fffdf8",
+    "textColor": "#242721",
+    "fontFamily": "Figtree, system-ui, sans-serif",
+    "borderRadius": 16
+  }
+}
