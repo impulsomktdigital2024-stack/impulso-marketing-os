@@ -1,0 +1,53 @@
+name: Build Raio-X Digital APK
+
+on:
+  push:
+    branches:
+      - raio-x-digital-android
+    paths:
+      - 'mobile/raio-x-digital/**'
+      - '.github/workflows/build-raio-x-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build debug APK
+        working-directory: mobile/raio-x-digital
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare APK
+        run: |
+          mkdir -p dist
+          cp mobile/raio-x-digital/app/build/outputs/apk/debug/app-debug.apk dist/Raio-X-Digital-1.0.0.apk
+          sha256sum dist/Raio-X-Digital-1.0.0.apk > dist/Raio-X-Digital-1.0.0.sha256.txt
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: raio-x-digital-apk
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
